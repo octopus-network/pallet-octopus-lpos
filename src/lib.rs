@@ -739,92 +739,12 @@ impl Default for Forcing {
 // This should match directly with the semantic versions of the Rust crate.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 enum Releases {
-	V1_0_0Ancient,
-	V2_0_0,
-	V3_0_0,
-	V4_0_0,
-	V5_0_0, // blockable validators.
-	V6_0_0, // removal of all storage associated with offchain phragmen.
-	V7_0_0, // keep track of number of nominators / validators in map
+	V1_0_0,
 }
 
 impl Default for Releases {
 	fn default() -> Self {
-		Releases::V7_0_0
-	}
-}
-
-pub mod migrations {
-	use super::*;
-
-	pub mod v7 {
-		use super::*;
-
-		pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
-			assert!(CounterForValidators::<T>::get().is_zero(), "CounterForValidators already set.");
-			assert!(CounterForNominators::<T>::get().is_zero(), "CounterForNominators already set.");
-			assert!(StorageVersion::<T>::get() == Releases::V6_0_0);
-			Ok(())
-		}
-
-		pub fn migrate<T: Config>() -> Weight {
-			log!(info, "Migrating staking to Releases::V7_0_0");
-			let validator_count = Validators::<T>::iter().count() as u32;
-			let nominator_count = Nominators::<T>::iter().count() as u32;
-
-			CounterForValidators::<T>::put(validator_count);
-			CounterForNominators::<T>::put(nominator_count);
-
-			StorageVersion::<T>::put(Releases::V7_0_0);
-			log!(info, "Completed staking migration to Releases::V7_0_0");
-
-			T::DbWeight::get().reads_writes(
-				validator_count.saturating_add(nominator_count).into(),
-				2,
-			)
-		}
-	}
-
-	pub mod v6 {
-		use super::*;
-		use frame_support::{traits::Get, weights::Weight, generate_storage_alias};
-
-		// NOTE: value type doesn't matter, we just set it to () here.
-		generate_storage_alias!(Staking, SnapshotValidators => Value<()>);
-		generate_storage_alias!(Staking, SnapshotNominators => Value<()>);
-		generate_storage_alias!(Staking, QueuedElected => Value<()>);
-		generate_storage_alias!(Staking, QueuedScore => Value<()>);
-		generate_storage_alias!(Staking, EraElectionStatus => Value<()>);
-		generate_storage_alias!(Staking, IsCurrentSessionFinal => Value<()>);
-
-		/// check to execute prior to migration.
-		pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
-			// these may or may not exist.
-			log!(info, "SnapshotValidators.exits()? {:?}", SnapshotValidators::exists());
-			log!(info, "SnapshotNominators.exits()? {:?}", SnapshotNominators::exists());
-			log!(info, "QueuedElected.exits()? {:?}", QueuedElected::exists());
-			log!(info, "QueuedScore.exits()? {:?}", QueuedScore::exists());
-			// these must exist.
-			assert!(IsCurrentSessionFinal::exists(), "IsCurrentSessionFinal storage item not found!");
-			assert!(EraElectionStatus::exists(), "EraElectionStatus storage item not found!");
-			Ok(())
-		}
-
-		/// Migrate storage to v6.
-		pub fn migrate<T: Config>() -> Weight {
-			log!(info, "Migrating staking to Releases::V6_0_0");
-
-			SnapshotValidators::kill();
-			SnapshotNominators::kill();
-			QueuedElected::kill();
-			QueuedScore::kill();
-			EraElectionStatus::kill();
-			IsCurrentSessionFinal::kill();
-
-			StorageVersion::<T>::put(Releases::V6_0_0);
-			log!(info, "Done.");
-			T::DbWeight::get().writes(6 + 1)
-		}
+		Releases::V1_0_0
 	}
 }
 
@@ -1264,7 +1184,7 @@ pub mod pallet {
 			ForceEra::<T>::put(self.force_era);
 			CanceledSlashPayout::<T>::put(self.canceled_payout);
 			SlashRewardFraction::<T>::put(self.slash_reward_fraction);
-			StorageVersion::<T>::put(Releases::V6_0_0);
+			StorageVersion::<T>::put(Releases::V1_0_0);
 			MinNominatorBond::<T>::put(self.min_nominator_bond);
 			MinValidatorBond::<T>::put(self.min_validator_bond);
 
@@ -1386,20 +1306,12 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
-			if StorageVersion::<T>::get() == Releases::V6_0_0 {
-				migrations::v7::migrate::<T>()
-			} else {
-				T::DbWeight::get().reads(1)
-			}
+			T::DbWeight::get().reads(1)
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<(), &'static str> {
-			if StorageVersion::<T>::get() == Releases::V6_0_0 {
-				migrations::v7::pre_migrate::<T>()
-			} else {
-				Ok(())
-			}
+			Ok(())
 		}
 
 		fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
