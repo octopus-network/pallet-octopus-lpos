@@ -582,34 +582,34 @@ pub fn do_slash<T: Config>(
 	reward_payout: &mut BalanceOf<T>,
 	slashed_imbalance: &mut NegativeImbalanceOf<T>,
 ) {
-	let controller = match <Pallet<T>>::bonded(stash) {
-		None => return, // defensive: should always exist.
-		Some(c) => c,
-	};
+	// let controller = match <Pallet<T>>::bonded(stash) {
+	// 	None => return, // defensive: should always exist.
+	// 	Some(c) => c,
+	// };
 
-	let mut ledger = match <Pallet<T>>::ledger(&controller) {
-		Some(ledger) => ledger,
-		None => return, // nothing to do.
-	};
+	// let mut ledger = match <Pallet<T>>::ledger(&controller) {
+	// 	Some(ledger) => ledger,
+	// 	None => return, // nothing to do.
+	// };
 
-	let value = ledger.slash(value, T::Currency::minimum_balance());
+	// let value = ledger.slash(value, T::Currency::minimum_balance());
 
-	if !value.is_zero() {
-		let (imbalance, missing) = T::Currency::slash(stash, value);
-		slashed_imbalance.subsume(imbalance);
+	// if !value.is_zero() {
+	// 	let (imbalance, missing) = T::Currency::slash(stash, value);
+	// 	slashed_imbalance.subsume(imbalance);
 
-		if !missing.is_zero() {
-			// deduct overslash from the reward payout
-			*reward_payout = reward_payout.saturating_sub(missing);
-		}
+	// 	if !missing.is_zero() {
+	// 		// deduct overslash from the reward payout
+	// 		*reward_payout = reward_payout.saturating_sub(missing);
+	// 	}
 
-		<Pallet<T>>::update_ledger(&controller, &ledger);
+	// 	<Pallet<T>>::update_ledger(&controller, &ledger);
 
-		// trigger the event
-		<Pallet<T>>::deposit_event(
-			super::Event::<T>::Slash(stash.clone(), value)
-		);
-	}
+	// 	// trigger the event
+	// 	<Pallet<T>>::deposit_event(
+	// 		super::Event::<T>::Slash(stash.clone(), value)
+	// 	);
+	// }
 }
 
 /// Apply a previously-unapplied slash.

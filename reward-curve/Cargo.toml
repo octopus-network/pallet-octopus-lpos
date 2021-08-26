@@ -1,12 +1,12 @@
 [package]
-name = "pallet-octopus-staking-reward-curve"
+name = "pallet-octopus-lpos-reward-curve"
 version = "3.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://substrate.dev"
 repository = "https://github.com/paritytech/substrate/"
-description = "Reward Curve for FRAME staking pallet"
+description = "Reward Curve for FRAME LPoS pallet"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

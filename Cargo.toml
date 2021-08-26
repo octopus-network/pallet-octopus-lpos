@@ -1,12 +1,12 @@
 [package]
-name = "pallet-octopus-staking"
+name = "pallet-octopus-lpos"
 version = "3.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://substrate.dev"
 repository = "https://github.com/paritytech/substrate/"
-description = "FRAME pallet staking"
+description = "FRAME pallet LPoS"
 readme = "README.md"
 
 [package.metadata.docs.rs]
@@ -25,7 +25,7 @@ frame-system = { version = "3.0.0", default-features = false }
 pallet-session = { version = "3.0.0", default-features = false }
 pallet-authorship = { version = "3.0.0", default-features = false }
 sp-application-crypto = { version = "3.0.0", default-features = false }
-frame-election-provider-support = { version = "3.0.0", default-features = false, path = "../../../../frame/election-provider-support" }
+sp-npos-elections = { version = "3.0.0", default-features = false }
 log = { version = "0.4.14", default-features = false }
 paste = "1.0"
 
@@ -42,7 +42,6 @@ pallet-timestamp = { version = "3.0.0" }
 pallet-staking-reward-curve = { version = "3.0.0" }
 substrate-test-utils = { version = "3.0.0" }
 frame-benchmarking = { version = "3.1.0" }
-frame-election-provider-support = { version = "3.0.0", features = ["runtime-benchmarks"], path = "../../../../frame/election-provider-support" }
 rand_chacha = { version = "0.2" }
 parking_lot = "0.11.1"
 hex = "0.4"
@@ -62,11 +61,10 @@ std = [
 	"pallet-authorship/std",
 	"sp-application-crypto/std",
 	"log/std",
-	"frame-election-provider-support/std",
+	"sp-npos-elections/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
-	"frame-election-provider-support/runtime-benchmarks",
 	"rand_chacha",
 ]
 try-runtime = ["frame-support/try-runtime"]
