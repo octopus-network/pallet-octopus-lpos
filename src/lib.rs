@@ -20,7 +20,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		Currency, CurrencyToVote, EnsureOrigin, EstimateNextNewSession, Get, Imbalance,
-		LockableCurrency, OnUnbalanced, UnixTime,
+		OnUnbalanced, UnixTime,
 	},
 	weights::{Weight, WithPostDispatchInfo},
 };
@@ -41,7 +41,7 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
-pub(crate) const LOG_TARGET: &'static str = "runtime::lpos";
+pub(crate) const LOG_TARGET: &'static str = "runtime::octopus-lpos";
 
 // syntactic sugar for logging.
 #[macro_export]
@@ -49,7 +49,7 @@ macro_rules! log {
 	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
 		log::$level!(
 			target: crate::LOG_TARGET,
-			concat!("[{:?}] 💸 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
+			concat!("[{:?}] 🐙 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
 		)
 	};
 }
@@ -351,9 +351,8 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
-		// TODO: remove
-		/// The staking balance.
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		/// The currency used to pay for rewards.
+		type Currency: Currency<Self::AccountId>;
 
 		/// Time used for computing era duration.
 		///
@@ -1871,7 +1870,9 @@ impl<T: Config> Pallet<T> {
 		// 	frame_support::weights::DispatchClass::Mandatory,
 		// );
 
+		log!(info, "Election result: {:?}", election_result);
 		let exposures = Self::collect_exposures(election_result);
+		log!(info, "Election result: {:?}", exposures);
 
 		if (exposures.len() as u32) < Self::minimum_validator_count().max(1) {
 			// Session will panic if we ever return an empty validator set, thus max(1) ^^.
