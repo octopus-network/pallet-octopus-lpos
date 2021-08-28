@@ -28,6 +28,7 @@ sp-application-crypto = { version = "3.0.0", default-features = false }
 sp-npos-elections = { version = "3.0.0", default-features = false }
 log = { version = "0.4.14", default-features = false }
 paste = "1.0"
+pallet-octopus-appchain = { default-features = false, git = "https://github.com/octopus-network/pallet-octopus-appchain", branch = "dev" }
 
 # Optional imports for benchmarking
 frame-benchmarking = { version = "3.1.0", default-features = false, optional = true }
@@ -62,6 +63,7 @@ std = [
 	"sp-application-crypto/std",
 	"log/std",
 	"sp-npos-elections/std",
+	"pallet-octopus-appchain/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

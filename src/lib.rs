@@ -25,6 +25,8 @@ use frame_support::{
 	weights::{Weight, WithPostDispatchInfo},
 };
 use frame_system::{ensure_root, ensure_signed, offchain::SendTransactionTypes, pallet_prelude::*};
+use pallet_octopus_appchain::traits::ElectionProvider;
+use pallet_octopus_appchain::traits::LposInterface;
 use pallet_session::historical;
 use sp_npos_elections::Supports;
 use sp_runtime::{
@@ -298,6 +300,39 @@ impl<Balance: AtLeast32BitUnsigned + Clone, T: Get<&'static PiecewiseLinear<'sta
 	}
 }
 
+impl<T: Config>
+	pallet_octopus_appchain::traits::LposInterface<<T as frame_system::Config>::AccountId>
+	for Pallet<T>
+{
+	fn bond_and_validate(
+		controller: <T as frame_system::Config>::AccountId,
+		value: u128,
+		commission: Perbill,
+		blocked: bool,
+	) -> DispatchResult {
+		let prefs = ValidatorPrefs { commission, blocked };
+
+		let mut claimed_rewards;
+
+		if let Some(ledger) = Self::ledger(&controller) {
+			claimed_rewards = ledger.claimed_rewards;
+		} else {
+			let current_era = CurrentEra::<T>::get().unwrap_or(0);
+			let history_depth = Self::history_depth();
+			let last_reward_era = current_era.saturating_sub(history_depth);
+			claimed_rewards = (last_reward_era..current_era).collect();
+		}
+
+		// TODO
+		<Payee<T>>::insert(&controller, RewardDestination::Controller);
+
+		let item = StakingLedger { active: value, claimed_rewards };
+		Self::update_ledger(&controller, &item);
+		Self::deposit_event(Event::<T>::Bonded(controller.clone(), value));
+		Self::validate(controller, prefs)
+	}
+}
+
 /// Mode of era-forcing.
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
@@ -332,13 +367,6 @@ impl Default for Releases {
 	fn default() -> Self {
 		Releases::V1_0_0
 	}
-}
-
-pub trait ElectionProvider<AccountId> {
-	/// Elect a new set of winners.
-	///
-	/// The result is returned in a target major format, namely as vector of supports.
-	fn elect() -> Supports<AccountId>;
 }
 
 #[frame_support::pallet]
@@ -762,9 +790,12 @@ pub mod pallet {
 
 			for &(ref controller, balance, ref status) in &self.stakers {
 				let _ = match status {
-					StakerStatus::Validator => {
-						<Pallet<T>>::validate(controller.clone(), balance, Default::default())
-					}
+					StakerStatus::Validator => <Pallet<T>>::bond_and_validate(
+						controller.clone(),
+						balance,
+						Perbill::zero(),
+						false,
+					),
 					StakerStatus::Nominator(votes) => <Pallet<T>>::nominate(
 						controller.clone(),
 						votes.iter().map(|l| T::Lookup::unlookup(l.clone())).collect(),
@@ -797,7 +828,7 @@ pub mod pallet {
 		///
 		/// NOTE: This event is only emitted when funds are bonded via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
-		Bonded(T::AccountId, BalanceOf<T>),
+		Bonded(T::AccountId, u128),
 		/// An account has unbonded this amount. \[stash, amount\]
 		Unbonded(T::AccountId, BalanceOf<T>),
 		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
@@ -1427,35 +1458,7 @@ impl<T: Config> Pallet<T> {
 	/// - Read: Era Election Status, Ledger
 	/// - Write: Nominators, Validators
 	/// # </weight>
-	pub fn validate(
-		controller: T::AccountId,
-		value: u128,
-		prefs: ValidatorPrefs,
-	) -> DispatchResult {
-		if <Ledger<T>>::contains_key(&controller) {
-			Err(Error::<T>::AlreadyPaired)?
-		}
-
-		// Reject a bond which is considered to be _dust_.
-		// if value < T::Currency::minimum_balance() {
-		// 	Err(Error::<T>::InsufficientBond)?
-		// }
-
-		// TODO
-		// frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
-
-		<Payee<T>>::insert(&controller, RewardDestination::Controller);
-
-		let current_era = CurrentEra::<T>::get().unwrap_or(0);
-		let history_depth = Self::history_depth();
-		let last_reward_era = current_era.saturating_sub(history_depth);
-
-		let item = StakingLedger {
-			active: value,
-			claimed_rewards: (last_reward_era..current_era).collect(),
-		};
-		Self::update_ledger(&controller, &item);
-
+	pub fn validate(controller: T::AccountId, prefs: ValidatorPrefs) -> DispatchResult {
 		let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 		ensure!(ledger.active >= MinValidatorBond::<T>::get(), Error::<T>::InsufficientBond);
 
