@@ -1,3 +1,5 @@
+*moved to https://github.com/octopus-network/octopus-pallets/tree/main/lpos*
+
 # Staking Module
 
 The Staking module is used to manage funds at stake by network maintainers.
